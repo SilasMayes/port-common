@@ -156,8 +156,8 @@ BOOL PortGame_Battle_IsWild(u32 battleType);   // not trainer, link, frontier, P
 // Save slot events for port modules still in the game (transitional)
 // ---------------------------------------------------------------------------
 
-// Save sync brought in a slot's sidecar files (save_slotN.nuzlocke, .hunt): modules that
-// keep one loaded drop it and read it again
+// Save sync brought in a slot's sidecar files (save_slotN.nuzlocke): modules still in the
+// game that keep one loaded drop it and read it again
 void PortGame_OnSlotSidecarsReplaced(int slot);
 
 #ifdef __cplusplus

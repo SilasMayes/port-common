@@ -23,6 +23,7 @@
 #include "port/autosave.h"
 #include "port/port_game.h"
 #include "port/save_slots.h"
+#include "port/shiny_hunt.h"
 
 #define SETTINGS_FILE "save_sync.ini"
 #define CHECK_MS 4000      // how often the folder is looked at during a game
@@ -545,6 +546,7 @@ static int BringIn(int slot)
         TherePath(slot, kSidecars[i][1], there, sizeof(there));
         CopySmallFile(there, to);
     }
+    ShinyHunt_ForgetLoaded();
     PortGame_OnSlotSidecarsReplaced(slot);
 
     SaveSlotInfo info;
