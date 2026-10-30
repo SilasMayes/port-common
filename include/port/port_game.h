@@ -99,11 +99,9 @@ const char *PortGame_VersionDescription(const char *versionName);
 // Save slot events for port modules still in the game (transitional)
 // ---------------------------------------------------------------------------
 
-// Right before a slot's save is (re)loaded (save sync fetches a newer copy here)
-void PortGame_OnSlotBeforeLoad(int slot);
-
-// After every successful save into a slot (manual or automatic)
-void PortGame_OnSlotSaved(int slot);
+// Save sync brought in a slot's sidecar files (save_slotN.nuzlocke, .hunt): modules that
+// keep one loaded drop it and read it again
+void PortGame_OnSlotSidecarsReplaced(int slot);
 
 #ifdef __cplusplus
 }

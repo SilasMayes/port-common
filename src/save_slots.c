@@ -10,6 +10,7 @@
 
 #include "port/autosave.h"
 #include "port/port_game.h"
+#include "port/save_sync.h"
 #include "port/save_version.h"
 
 static int sCurrentSlot = 0;
@@ -190,7 +191,7 @@ void SaveSlots_Select(struct SaveData *saveData, int slot)
     SaveSlots_FilePath(slot, path, sizeof(path));
     SIM_Backup_SetPath(path);
 
-    PortGame_OnSlotBeforeLoad(slot);
+    SaveSync_BeforeLoad(slot);
     PortGame_Save_Reload(saveData);
     SaveSlots_OnLoaded(saveData);
 }
@@ -200,7 +201,7 @@ void SaveSlots_OnSaved(struct SaveData *saveData)
     WriteSummary(sCurrentSlot, saveData, TRUE);
     SaveVersion_OnSaved(sCurrentSlot);
     Autosave_NoteSaved();
-    PortGame_OnSlotSaved(sCurrentSlot);
+    SaveSync_OnSaved(sCurrentSlot);
 }
 
 void SaveSlots_OnLoaded(struct SaveData *saveData)
