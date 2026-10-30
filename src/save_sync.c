@@ -21,6 +21,7 @@
 #endif
 
 #include "port/autosave.h"
+#include "port/nuzlocke.h"
 #include "port/port_game.h"
 #include "port/save_slots.h"
 #include "port/shiny_hunt.h"
@@ -546,8 +547,8 @@ static int BringIn(int slot)
         TherePath(slot, kSidecars[i][1], there, sizeof(there));
         CopySmallFile(there, to);
     }
+    Nuzlocke_ForgetLoaded();
     ShinyHunt_ForgetLoaded();
-    PortGame_OnSlotSidecarsReplaced(slot);
 
     SaveSlotInfo info;
     memset(&info, 0, sizeof(info));

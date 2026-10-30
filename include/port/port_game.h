@@ -60,6 +60,16 @@ typedef struct PortCheatsConfig {
 // FALSE while the settings aren't loaded yet (every cheat is off then)
 BOOL PortGame_Config_GetCheats(PortCheatsConfig *out);
 
+typedef struct PortNuzlockeConfig {
+    BOOL enabled;   // the Nuzlocke helper (off by default)
+    BOOL dupes;     // dupes clause
+    BOOL shiny;     // shiny clause
+    BOOL toPC;      // fainted Pokemon go to the PC after the battle
+} PortNuzlockeConfig;
+
+// FALSE while the settings aren't loaded yet (the helper is off then)
+BOOL PortGame_Config_GetNuzlocke(PortNuzlockeConfig *out);
+
 // ---------------------------------------------------------------------------
 // Save data
 // ---------------------------------------------------------------------------
@@ -110,7 +120,7 @@ BOOL PortGame_Field_Save(void);
 const char *PortGame_VersionDescription(const char *versionName);
 
 // ---------------------------------------------------------------------------
-// Pokémon (cheats, shiny hunt)
+// Pokémon (cheats, shiny hunt, Nuzlocke)
 // ---------------------------------------------------------------------------
 // The game's own party and Pokémon objects; port-common only passes them back.
 
@@ -137,6 +147,9 @@ typedef struct PortMonInfo {
 
 void PortGame_Mon_GetInfo(struct Pokemon *mon, PortMonInfo *out);
 
+// Nickname in ASCII (Nidoran's symbols as " M"/" F")
+void PortGame_Mon_GetName(struct Pokemon *mon, char *out, int outSize);
+
 // Gives the Pokémon a new personality value and recomputes what depends on it
 void PortGame_Mon_SetPersonality(struct Pokemon *mon, u32 personality);
 
@@ -146,19 +159,24 @@ BOOL PortGame_IsPersonalityShiny(u32 otID, u32 personality);
 // The game's own shiny odds: 1 in this many (8192 in vanilla Gen 4; ROM hacks differ)
 u32 PortGame_BaseShinyOdds(void);
 
+// Moves a party Pokémon to the first free PC box slot (and asks for a full save next
+// time). FALSE, party unchanged, when the PC is full or no save is loaded.
+BOOL PortGame_Party_MoveToPC(struct Party *party, int index);
+
 // The player's trainer ID (the full 32 bits Pokémon store as OT ID); FALSE with no save
 BOOL PortGame_PlayerTrainerID(u32 *out);
 
+// Whether the loaded save's Pokédex has the species caught (FALSE with no game running)
+BOOL PortGame_Pokedex_HasCaught(u16 species);
+
+// The overworld's current location name ID (map label), or 0xFFFF with no game running.
+// The Nuzlocke books are kept per location name.
+u16 PortGame_Field_LocationName(void);
+
 // Battles: the game's battle type flags and result mask, as its hooks pass them
 BOOL PortGame_Battle_IsWild(u32 battleType);   // not trainer, link, frontier, Pal Park, tutorial
-
-// ---------------------------------------------------------------------------
-// Save slot events for port modules still in the game (transitional)
-// ---------------------------------------------------------------------------
-
-// Save sync brought in a slot's sidecar files (save_slotN.nuzlocke): modules still in the
-// game that keep one loaded drop it and read it again
-void PortGame_OnSlotSidecarsReplaced(int slot);
+BOOL PortGame_Battle_Captured(int resultMask); // the wild Pokémon was caught
+BOOL PortGame_Battle_Lost(int resultMask);     // the player lost
 
 #ifdef __cplusplus
 }
