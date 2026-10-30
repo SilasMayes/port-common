@@ -87,20 +87,23 @@ BOOL PortGame_Field_CanSave(const char **reason);
 BOOL PortGame_Field_Save(void);
 
 // ---------------------------------------------------------------------------
+// Versions (save_version.c; libntr's carts)
+// ---------------------------------------------------------------------------
+// The game also implements libntr's hooks SIM_Prj_VersionFiles (the files a version may
+// differ in) and SIM_Prj_VersionName (a version patch's name, e.g. "Classic").
+
+// One or two sentences for the "Which version?" question, or NULL
+const char *PortGame_VersionDescription(const char *versionName);
+
+// ---------------------------------------------------------------------------
 // Save slot events for port modules still in the game (transitional)
 // ---------------------------------------------------------------------------
 
 // Right before a slot's save is (re)loaded (save sync fetches a newer copy here)
 void PortGame_OnSlotBeforeLoad(int slot);
 
-// After a slot's save has been loaded
-void PortGame_OnSlotLoaded(int slot);
-
 // After every successful save into a slot (manual or automatic)
 void PortGame_OnSlotSaved(int slot);
-
-// A slot's save was replaced from outside (import, save sync)
-void PortGame_OnSlotReplaced(int slot);
 
 #ifdef __cplusplus
 }

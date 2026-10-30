@@ -60,3 +60,4 @@ Both games build against the same libntr fork (`SilasMayes/libntr`, `thor-androi
 |---|---|---|
 | Save slots | `include/port/save_slots.h`, `src/save_slots.c` | 2026-10-30 |
 | Autosave | `include/port/autosave.h`, `src/autosave.c` | 2026-10-30 |
+| Save versions (Renegade Platinum Complete/Classic) | `include/port/save_version.h`, `src/save_version.c` | 2026-10-30 |

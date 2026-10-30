@@ -32,6 +32,7 @@ port_common_lib = static_library('port_common',
     files(
         'src/autosave.c',
         'src/save_slots.c',
+        'src/save_version.c',
     ),
     c_args: ['-std=c99'],
     include_directories: port_common_includes,

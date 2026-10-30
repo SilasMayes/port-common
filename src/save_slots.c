@@ -10,6 +10,7 @@
 
 #include "port/autosave.h"
 #include "port/port_game.h"
+#include "port/save_version.h"
 
 static int sCurrentSlot = 0;
 static BOOL sMainMenuActive = FALSE;
@@ -197,6 +198,7 @@ void SaveSlots_Select(struct SaveData *saveData, int slot)
 void SaveSlots_OnSaved(struct SaveData *saveData)
 {
     WriteSummary(sCurrentSlot, saveData, TRUE);
+    SaveVersion_OnSaved(sCurrentSlot);
     Autosave_NoteSaved();
     PortGame_OnSlotSaved(sCurrentSlot);
 }
@@ -204,8 +206,8 @@ void SaveSlots_OnSaved(struct SaveData *saveData)
 void SaveSlots_OnLoaded(struct SaveData *saveData)
 {
     WriteSummary(sCurrentSlot, saveData, FALSE);
+    SaveVersion_OnSlotLoaded(sCurrentSlot);
     Autosave_NoteSaved();
-    PortGame_OnSlotLoaded(sCurrentSlot);
 }
 
 void SaveSlots_SetMainMenuActive(BOOL active)
@@ -305,7 +307,7 @@ BOOL SaveSlots_ReplaceImage(int slot, const u8 *image, char *err, int errSize)
     char infoPath[64];
     InfoPath(slot, infoPath, sizeof(infoPath));
     remove(infoPath);
-    PortGame_OnSlotReplaced(slot);
+    SaveVersion_ForgetSlot(slot);
 
     // Replacing the slot shown on the main menu: reload it there
     if (slot == sCurrentSlot) {
