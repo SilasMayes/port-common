@@ -62,3 +62,4 @@ Both games build against the same libntr fork (`SilasMayes/libntr`, `thor-androi
 | Autosave | `include/port/autosave.h`, `src/autosave.c` | 2026-10-30 |
 | Save versions (Renegade Platinum Complete/Classic) | `include/port/save_version.h`, `src/save_version.c` | 2026-10-30 |
 | Save sync (slots kept in step through a synced folder) | `include/port/save_sync.h`, `src/save_sync.c` | 2026-10-30 |
+| Cheats (shiny odds, EXP, catch/PP/escape/eggs/TMs) | `include/port/cheats.h`, `src/cheats.c` | 2026-10-30 |

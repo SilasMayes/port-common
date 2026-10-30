@@ -46,6 +46,20 @@ typedef struct PortAutosaveConfig {
 // FALSE while the settings aren't loaded yet
 BOOL PortGame_Config_GetAutosave(PortAutosaveConfig *out);
 
+typedef struct PortCheatsConfig {
+    int shinyOdds;      // 1 in this many; 0 or worse than the game's: the game's odds
+    int expPercent;     // EXP gained, in percent (100 or 0: unchanged)
+    BOOL alwaysCatch;
+    BOOL infinitePP;
+    BOOL alwaysEscape;
+    BOOL fastEggs;
+    BOOL anyTM;
+    BOOL expShareAll;   // Exp. Share for the whole party (a Gameplay setting)
+} PortCheatsConfig;
+
+// FALSE while the settings aren't loaded yet (every cheat is off then)
+BOOL PortGame_Config_GetCheats(PortCheatsConfig *out);
+
 // ---------------------------------------------------------------------------
 // Save data
 // ---------------------------------------------------------------------------
@@ -94,6 +108,49 @@ BOOL PortGame_Field_Save(void);
 
 // One or two sentences for the "Which version?" question, or NULL
 const char *PortGame_VersionDescription(const char *versionName);
+
+// ---------------------------------------------------------------------------
+// Pokémon (cheats, shiny hunt)
+// ---------------------------------------------------------------------------
+// The game's own party and Pokémon objects; port-common only passes them back.
+
+struct Party;
+struct Pokemon;
+
+// Highest species ID of the Gen 4 games: the 493 of the National Dex, then Egg (494) and
+// Bad Egg (495), as both Platinum and HGSS number them (the game's MAX_SPECIES). Species IDs
+// in the sidecar files are these numbers. The adapter checks it against the game's own.
+#define PORT_SPECIES_MAX 495
+
+int PortGame_Party_Count(struct Party *party);
+struct Pokemon *PortGame_Party_Mon(struct Party *party, int index);
+
+typedef struct PortMonInfo {
+    u16 species;      // 0: none
+    u8 level;
+    BOOL isEgg;
+    BOOL shiny;       // at the game's own threshold (a ROM hack may change it)
+    u32 hp;
+    u32 personality;
+    u32 otID;
+} PortMonInfo;
+
+void PortGame_Mon_GetInfo(struct Pokemon *mon, PortMonInfo *out);
+
+// Gives the Pokémon a new personality value and recomputes what depends on it
+void PortGame_Mon_SetPersonality(struct Pokemon *mon, u32 personality);
+
+// Whether a Pokémon with this personality is shiny for trainer otID (game's threshold)
+BOOL PortGame_IsPersonalityShiny(u32 otID, u32 personality);
+
+// The game's own shiny odds: 1 in this many (8192 in vanilla Gen 4; ROM hacks differ)
+u32 PortGame_BaseShinyOdds(void);
+
+// The player's trainer ID (the full 32 bits Pokémon store as OT ID); FALSE with no save
+BOOL PortGame_PlayerTrainerID(u32 *out);
+
+// Battles: the game's battle type flags and result mask, as its hooks pass them
+BOOL PortGame_Battle_IsWild(u32 battleType);   // not trainer, link, frontier, Pal Park, tutorial
 
 // ---------------------------------------------------------------------------
 // Save slot events for port modules still in the game (transitional)

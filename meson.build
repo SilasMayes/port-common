@@ -31,6 +31,7 @@ is_native = (build_target == 'linux' or build_target == 'win64')
 port_common_lib = static_library('port_common',
     files(
         'src/autosave.c',
+        'src/cheats.c',
         'src/save_slots.c',
         'src/save_sync.c',
         'src/save_version.c',
