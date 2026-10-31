@@ -9,7 +9,7 @@ It is a meson subproject of each game:
 
 | Game | Repo | Adapter |
 |---|---|---|
-| Pokémon Platinum | [SilasMayes/pokeplatinum](https://github.com/SilasMayes/pokeplatinum) `thor-android` | `src/port/game_platinum.c` |
+| Pokémon Platinum | [SilasMayes/pokeplatinum-thor](https://github.com/SilasMayes/pokeplatinum-thor) `platinum-thor` | `src/port/game_platinum.c` |
 | Pokémon HeartGold / SoulSilver | [SilasMayes/pokeheartgold](https://github.com/SilasMayes/pokeheartgold) `thor-android` | `src/port/game_hgss.c` (when HGSS needs a module) |
 
 Both games build against the same libntr fork (`SilasMayes/libntr`, `thor-android`).
@@ -65,3 +65,8 @@ Both games build against the same libntr fork (`SilasMayes/libntr`, `thor-androi
 | Cheats (shiny odds, EXP, catch/PP/escape/eggs/TMs) | `include/port/cheats.h`, `src/cheats.c` | 2026-10-30 |
 | Shiny-hunt counters | `include/port/shiny_hunt.h`, `src/shiny_hunt.c` | 2026-10-30 |
 | Nuzlocke helper | `include/port/nuzlocke.h`, `src/nuzlocke.c` | 2026-10-30 |
+
+## License
+
+MIT; see [LICENSE](LICENSE). It builds against [libntr](https://github.com/cybervisi0n/libntr) (MIT,
+cybervisi0n). It includes no game headers: everything game-specific goes through the game's adapter.
