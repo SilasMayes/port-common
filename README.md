@@ -65,8 +65,13 @@ Both games build against the same libntr fork (`SilasMayes/libntr`, `thor-androi
 | Cheats (shiny odds, EXP, catch/PP/escape/eggs/TMs) | `include/port/cheats.h`, `src/cheats.c` | 2026-10-30 |
 | Shiny-hunt counters | `include/port/shiny_hunt.h`, `src/shiny_hunt.c` | 2026-10-30 |
 | Nuzlocke helper | `include/port/nuzlocke.h`, `src/nuzlocke.c` | 2026-10-30 |
+| Gear companion UI (the game implements the `gear_*.h` data headers) | `src/gear_ui.cpp`, `include/port/gear_*.h`, `res/fonts/` | 2026-11-04 |
 
 ## License
 
 MIT; see [LICENSE](LICENSE). It builds against [libntr](https://github.com/cybervisi0n/libntr) (MIT,
 cybervisi0n). It includes no game headers: everything game-specific goes through the game's adapter.
+
+The Gear's font, [Atkinson Hyperlegible](https://brailleinstitute.org/freefont) (Braille Institute), is under
+the SIL Open Font License 1.1: [res/fonts/AtkinsonHyperlegible-OFL.txt](res/fonts/AtkinsonHyperlegible-OFL.txt).
+It is embedded in the library, so a game shipping port-common ships that notice with it.

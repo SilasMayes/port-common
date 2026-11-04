@@ -70,6 +70,19 @@ typedef struct PortNuzlockeConfig {
 // FALSE while the settings aren't loaded yet (the helper is off then)
 BOOL PortGame_Config_GetNuzlocke(PortNuzlockeConfig *out);
 
+typedef struct PortGearConfig {
+    BOOL enabled;          // the Gear on the lower screen
+    int discovery;         // GearDiscovery (port/gear_data.h): how much the Gear reveals
+    BOOL battleControls;   // in battles the Gear takes the whole lower screen with the battle menu
+    BOOL hardLevelCap;     // no battle EXP past the level cap (a Gameplay setting; read only here)
+} PortGearConfig;
+
+// FALSE while the settings aren't loaded yet
+BOOL PortGame_Config_GetGear(PortGearConfig *out);
+
+// Stores enabled, discovery and battleControls and writes the settings file
+void PortGame_Config_SetGear(const PortGearConfig *config);
+
 // ---------------------------------------------------------------------------
 // Save data
 // ---------------------------------------------------------------------------

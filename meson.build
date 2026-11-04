@@ -1,4 +1,4 @@
-project('port-common', 'c',
+project('port-common', ['c', 'cpp'],
     version: '0.1',
     meson_version: '>=1.12.0',
     default_options: [
@@ -28,10 +28,24 @@ nitrosdk_headers_dep = dependency('NitroSDK').partial_dependency(
 port_common_includes = include_directories('include')
 is_native = (build_target == 'linux' or build_target == 'win64')
 
+# The Gear's font (Atkinson Hyperlegible, SIL OFL 1.1: res/fonts/AtkinsonHyperlegible-OFL.txt),
+# embedded as AtkinsonHyperlegible_{Regular,Bold}_ttf[] (+ _size); the game's settings UI uses it too
+python3 = find_program('python3', native: true)
+gear_fonts_c = custom_target('gear_fonts',
+    input: files(
+        'res/fonts/AtkinsonHyperlegible-Regular.ttf',
+        'res/fonts/AtkinsonHyperlegible-Bold.ttf',
+    ),
+    output: 'gear_fonts.c',
+    command: [python3, files('tools/bin2c.py'), '@OUTPUT@', '@INPUT@'],
+)
+
 port_common_lib = static_library('port_common',
+    gear_fonts_c,
     files(
         'src/autosave.c',
         'src/cheats.c',
+        'src/gear_ui.cpp',
         'src/nuzlocke.c',
         'src/save_slots.c',
         'src/save_sync.c',
@@ -45,8 +59,10 @@ port_common_lib = static_library('port_common',
     native: is_native,
 )
 
+# link_whole: some modules are reached only through libntr's weak SIM_Prj_* hooks (the Gear's
+# SIM_Prj_Companion*), which a plain archive link would leave at libntr's empty defaults
 port_common_dep = declare_dependency(
     include_directories: port_common_includes,
-    link_with: port_common_lib,
+    link_whole: port_common_lib,
 )
 meson.override_dependency('port_common', port_common_dep, native: is_native)
