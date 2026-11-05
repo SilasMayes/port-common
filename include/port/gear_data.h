@@ -201,6 +201,19 @@ enum GearBattleMenuKind {
     GEAR_MENU_TARGETS,  // 0-3 targets (bottom left, top right, bottom right, top left), 4 Cancel
     GEAR_MENU_YES_NO,   // 0 yes, 1 no (labels below)
     GEAR_MENU_STOP,     // 0 stop watching a recorded battle
+    GEAR_MENU_PARTY,    // switching: 0-5 the Pokemon (the list's order, party[]), 6 Cancel (if cancel)
+    GEAR_MENU_PARTY_MON, // the Pokemon picked from it (partySelected): 0 Switch in, 1 Summary, 2 Moves, 3 Back
+};
+
+// Why a Pokemon in GEAR_MENU_PARTY can't be switched in
+enum GearPartyBlocked {
+    GEAR_PARTY_OK = 0,
+    GEAR_PARTY_FAINTED,
+    GEAR_PARTY_IN_BATTLE,
+    GEAR_PARTY_EGG,
+    GEAR_PARTY_CHOSEN,   // the other Pokemon of a double is already switching to it
+    GEAR_PARTY_PARTNERS, // the partner trainer's (multi battles)
+    GEAR_PARTY_LEARNING, // a move is being learned
 };
 
 typedef struct GearBattleMenu {
@@ -215,6 +228,10 @@ typedef struct GearBattleMenu {
     GearMove moves[4];   // GEAR_MENU_MOVES
     BOOL targetOk[4];    // GEAR_MENU_TARGETS: can be chosen
     int targetBattler[4]; // battler on each target button
+    int partyCount;      // GEAR_MENU_PARTY / _MON (cancel: the list has a Cancel button)
+    GearMon party[GEAR_PARTY_MAX];
+    u8 partyBlocked[GEAR_PARTY_MAX]; // enum GearPartyBlocked
+    int partySelected;   // GEAR_MENU_PARTY_MON: index in party[]
 } GearBattleMenu;
 
 BOOL Gear_GetBattleMenu(GearBattleMenu *out);
@@ -223,6 +240,14 @@ void Gear_PressBattleButton(int button);
 // catching tutorial): the Gear should make room for the DS screen
 BOOL Gear_BattleNeedsDsScreen(void);
 void Gear_NoteBattleDsScreen(void); // battle code: such a screen is up this frame
+// Battle code: the party screen (enum BattlePartyMode listMode) is shown and used on the
+// Gear right now (switching, with the Gear's battle controls on), so it needn't make room
+BOOL Gear_BattlePartyOnGear(int listMode);
+
+// Renames a party Pokemon: name in ASCII (A-Z, a-z, 0-9, space, . , ! ? - ' : / ( ) &),
+// up to 10 letters; "" or the species' name puts the species' name back. NULL when done,
+// else why not (only while the player is free on the overworld).
+const char *Gear_RenamePartyMon(int index, const char *name);
 
 // The overworld is running (a save is loaded and the player is in the field or in a
 // sub-screen/battle started from it)

@@ -577,8 +577,9 @@ void DrawHeader(const SIM_CompanionFrame *frame) {
 
 // --- party -------------------------------------------------------------------------------
 
-void DrawMonCard(int index, ImVec2 size) {
-  const GearMon &mon = sParty[index];
+// A party Pokemon's card; returns true when it was tapped. note: a word at the top right
+// (why it can't be picked), dim: drawn faded.
+bool MonCard(int index, const GearMon &mon, ImVec2 size, const char *note = nullptr, bool dim = false) {
   ImDrawList *draw = ImGui::GetWindowDrawList();
   ImVec2 pos = ImGui::GetCursorScreenPos();
 
@@ -586,9 +587,23 @@ void DrawMonCard(int index, ImVec2 size) {
   bool pressed = Tap("card", size);
   bool held = ImGui::IsItemActive() && !sDragging;
   ImGui::PopID();
-  if (pressed) {
-    sSelectedMon = index;
-  }
+  struct Finish {
+    ImDrawList *draw;
+    ImVec2 pos, size;
+    const char *note;
+    bool dim;
+    ~Finish() {
+      if (dim) {
+        draw->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(24, 29, 38, 140), S(12.0f));
+      }
+      if (note != nullptr) {
+        const ImVec2 noteSize = TextSize(sBold, S(12.0f), note);
+        const ImVec2 at(pos.x + size.x - noteSize.x - S(16.0f), pos.y + S(6.0f));
+        draw->AddRectFilled(at, ImVec2(at.x + noteSize.x + S(10.0f), at.y + noteSize.y + S(4.0f)), kBarBack, S(6.0f));
+        TextAt(draw, sBold, S(12.0f), ImVec2(at.x + S(5.0f), at.y + S(2.0f)), kTextDim, note);
+      }
+    }
+  } finish{draw, pos, size, note, dim};
 
   draw->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), held ? kPanelPressed : kPanel, S(12.0f));
   const float pad = S(10.0f);
@@ -604,7 +619,7 @@ void DrawMonCard(int index, ImVec2 size) {
   TextAt(draw, sBold, S(18.0f), ImVec2(textX, pos.y + pad), kText, MonName(mon));
   if (mon.isEgg) {
     TextAt(draw, sRegular, S(15.0f), ImVec2(textX, pos.y + pad + S(24.0f)), kTextDim, "Not hatched yet");
-    return;
+    return pressed;
   }
   if (mon.shiny) {
     ImVec2 nameSize = TextSize(sBold, S(18.0f), MonName(mon));
@@ -647,6 +662,161 @@ void DrawMonCard(int index, ImVec2 size) {
     draw->AddLine(ImVec2(c.x, c.y - S(9.0f)), ImVec2(c.x, c.y + S(9.0f)), kBad, S(3.0f));
     draw->AddLine(ImVec2(c.x - S(6.0f), c.y - S(3.0f)), ImVec2(c.x + S(6.0f), c.y - S(3.0f)), kBad, S(3.0f));
   }
+  return pressed;
+}
+
+void DrawMonCard(int index, ImVec2 size) {
+  if (MonCard(index, sParty[index], size)) {
+    sSelectedMon = index;
+  }
+}
+
+// --- renaming -----------------------------------------------------------------------------
+
+constexpr int kNameMax = 10; // the game's nickname length
+int sRenameMon = -1;         // party index being renamed, -1: none
+char sRenameText[kNameMax + 1];
+char sRenameOriginal[kNameMax + 1];
+bool sRenameLower = false;
+char sRenameError[128];
+
+void OpenRename(int index, const GearMon &mon) {
+  sRenameMon = index;
+  // Start from the name it has (Nidoran's symbol isn't on the keyboard: from the species then)
+  snprintf(sRenameText, sizeof(sRenameText), "%s", strstr(MonName(mon), " M") || strstr(MonName(mon), " F") ? "" : MonName(mon));
+  snprintf(sRenameOriginal, sizeof(sRenameOriginal), "%s", sRenameText);
+  sRenameLower = false;
+  sRenameError[0] = '\0';
+}
+
+// One key of the keyboard; returns true when tapped
+bool Key(const char *id, const char *label, ImVec2 size, ImU32 color = kPanel, bool enabled = true) {
+  ImDrawList *draw = ImGui::GetWindowDrawList();
+  ImVec2 pos = ImGui::GetCursorScreenPos();
+  const bool pressed = Tap(id, size);
+  const bool held = ImGui::IsItemActive() && !sDragging;
+  draw->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), held && enabled ? kPanelPressed : color, S(8.0f));
+  const ImVec2 labelSize = TextSize(sBold, S(18.0f), label);
+  TextAt(draw, sBold, S(18.0f), ImVec2(pos.x + (size.x - labelSize.x) * 0.5f, pos.y + (size.y - labelSize.y) * 0.5f),
+         enabled ? kText : kTextDim, label);
+  return pressed && enabled;
+}
+
+void DrawRename(const GearMon &mon) {
+  ImDrawList *draw = ImGui::GetWindowDrawList();
+  const float width = ImGui::GetContentRegionAvail().x;
+  const float gap = S(5.0f);
+
+  ImVec2 pos = ImGui::GetCursorScreenPos();
+  if (Tap("renameback", ImVec2(S(90.0f), S(34.0f)))) {
+    sRenameMon = -1;
+    return;
+  }
+  draw->AddRectFilled(pos, ImVec2(pos.x + S(90.0f), pos.y + S(34.0f)), kPanel, S(14.0f));
+  TextAt(draw, sBold, S(16.0f), ImVec2(pos.x + S(18.0f), pos.y + S(7.0f)), kText, "< Back");
+  char title[64];
+  snprintf(title, sizeof(title), "Rename %s", MonName(mon));
+  TextAt(draw, sBold, S(18.0f), ImVec2(pos.x + S(104.0f), pos.y + S(6.0f)), kText, title);
+  ImGui::Dummy(ImVec2(0, S(6.0f)));
+
+  // The name so far, with a cursor, and how many letters are left
+  pos = ImGui::GetCursorScreenPos();
+  const float fieldHeight = S(48.0f);
+  draw->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + fieldHeight), kBarBack, S(10.0f));
+  draw->AddRect(pos, ImVec2(pos.x + width, pos.y + fieldHeight), kAccent, S(10.0f), 0, S(2.0f));
+  const char *shown = sRenameText[0] != '\0' ? sRenameText : Gear_SpeciesName(mon.species);
+  const ImVec2 textSize = TextSize(sBold, S(24.0f), shown);
+  TextAt(draw, sBold, S(24.0f), ImVec2(pos.x + S(14.0f), pos.y + (fieldHeight - textSize.y) * 0.5f),
+         sRenameText[0] != '\0' ? kText : kTextDim, shown);
+  if (sRenameText[0] != '\0' && fmodf((float)ImGui::GetTime(), 1.0f) < 0.6f) {
+    const float cx = pos.x + S(16.0f) + textSize.x;
+    draw->AddLine(ImVec2(cx, pos.y + S(10.0f)), ImVec2(cx, pos.y + fieldHeight - S(10.0f)), kText, S(2.0f));
+  }
+  char count[16];
+  snprintf(count, sizeof(count), "%d/%d", (int)strlen(sRenameText), kNameMax);
+  const ImVec2 countSize = TextSize(sRegular, S(14.0f), count);
+  TextAt(draw, sRegular, S(14.0f), ImVec2(pos.x + width - countSize.x - S(12.0f), pos.y + (fieldHeight - countSize.y) * 0.5f),
+         kTextDim, count);
+  ImGui::Dummy(ImVec2(width, fieldHeight + S(6.0f)));
+
+  // The keys: the letters the game's own naming screen has, in a keyboard's rows
+  static const char *const kRowsUpper[] = {"1234567890", "QWERTYUIOP", "ASDFGHJKL'", "ZXCVBNM.,-", "!?:/&()+= "};
+  static const char *const kRowsLower[] = {"1234567890", "qwertyuiop", "asdfghjkl'", "zxcvbnm.,-", "!?:/&()+= "};
+  const char *const *rows = sRenameLower ? kRowsLower : kRowsUpper;
+  const int length = (int)strlen(sRenameText);
+  const float keyWidth = (width - gap * 9) / 10.0f;
+  const float keyHeight = S(46.0f);
+  for (int r = 0; r < 5; r++) {
+    for (int k = 0; rows[r][k] != '\0'; k++) {
+      if (k > 0) {
+        ImGui::SameLine(0.0f, gap);
+      }
+      const char c = rows[r][k];
+      char label[2] = {c, '\0'};
+      char id[8];
+      snprintf(id, sizeof(id), "k%d_%d", r, k);
+      if (c == ' ') {
+        continue; // the space key is below
+      }
+      if (Key(id, label, ImVec2(keyWidth, keyHeight), kPanel, length < kNameMax)) {
+        sRenameText[length] = c;
+        sRenameText[length + 1] = '\0';
+        sRenameError[0] = '\0';
+      }
+    }
+    if (r == 4) {
+      // The last row's free spot
+      ImGui::SameLine(0.0f, gap);
+      ImGui::Dummy(ImVec2(keyWidth, keyHeight));
+    }
+  }
+
+  // Case, space, delete
+  const float third = (width - gap * 2) / 3.0f;
+  if (Key("case", sRenameLower ? "ABC" : "abc", ImVec2(third, keyHeight))) {
+    sRenameLower = !sRenameLower;
+  }
+  ImGui::SameLine(0.0f, gap);
+  if (Key("space", "Space", ImVec2(third, keyHeight), kPanel, length > 0 && length < kNameMax)) {
+    sRenameText[length] = ' ';
+    sRenameText[length + 1] = '\0';
+  }
+  ImGui::SameLine(0.0f, gap);
+  if (Key("delete", "Delete", ImVec2(third, keyHeight), kPanel, length > 0)) {
+    sRenameText[length - 1] = '\0';
+    sRenameError[0] = '\0';
+  }
+
+  ImGui::Dummy(ImVec2(0, S(4.0f)));
+  if (Key("species", "Species name", ImVec2(third, keyHeight))) {
+    sRenameText[0] = '\0';
+  }
+  ImGui::SameLine(0.0f, gap);
+  if (Key("cancel", "Cancel", ImVec2(third, keyHeight))) {
+    sRenameMon = -1;
+    return;
+  }
+  ImGui::SameLine(0.0f, gap);
+  if (Key("save", "Save", ImVec2(third, keyHeight), kAccent)) {
+    if (strcmp(sRenameText, sRenameOriginal) == 0) {
+      sRenameMon = -1;
+      return;
+    }
+    const char *error = Gear_RenamePartyMon(sRenameMon, sRenameText);
+    if (error == nullptr) {
+      sRenameMon = -1;
+      sRefreshCountdown = 0; // read the party again
+      return;
+    }
+    snprintf(sRenameError, sizeof(sRenameError), "%s", error);
+  }
+  if (sRenameError[0] != '\0') {
+    ImGui::PushTextWrapPos(0.0f);
+    ImGui::TextColored(ImColor(kBad), "%s", sRenameError);
+    ImGui::PopTextWrapPos();
+  } else {
+    ImGui::TextDisabled("Species name: no nickname, like the game's naming screen with nothing typed.");
+  }
 }
 
 void DrawMonDetail(const GearMon &mon) {
@@ -660,6 +830,17 @@ void DrawMonDetail(const GearMon &mon) {
   }
   draw->AddRectFilled(pos, ImVec2(pos.x + S(90.0f), pos.y + S(34.0f)), kPanel, S(14.0f));
   TextAt(draw, sBold, S(16.0f), ImVec2(pos.x + S(18.0f), pos.y + S(7.0f)), kText, "< Party");
+  if (!mon.isEgg && !sInBattle) {
+    // Renaming, as the Name Rater does (only while walking around: the game's menus and
+    // battles work on copies)
+    const ImVec2 renamePos(pos.x + S(98.0f), pos.y);
+    ImGui::SetCursorScreenPos(renamePos);
+    if (Tap("rename", ImVec2(S(96.0f), S(34.0f)))) {
+      OpenRename(sSelectedMon, mon);
+    }
+    draw->AddRectFilled(renamePos, ImVec2(renamePos.x + S(96.0f), renamePos.y + S(34.0f)), kPanel, S(14.0f));
+    TextAt(draw, sBold, S(16.0f), ImVec2(renamePos.x + S(18.0f), renamePos.y + S(7.0f)), kAccent, "Rename");
+  }
 
   // Its portrait at the top right; the rows beside it stop short of it
   const float portrait = PixelSize(S(160.0f), 80.0f);
@@ -778,6 +959,13 @@ void DrawDaycare(); // below
 void DrawParty(const SIM_CompanionFrame *frame) {
   if (sPartyCount == 0) {
     ImGui::TextDisabled("No Pokemon yet.");
+    return;
+  }
+  if (sRenameMon >= 0 && (sRenameMon >= sPartyCount || sInBattle)) {
+    sRenameMon = -1;
+  }
+  if (sRenameMon >= 0) {
+    DrawRename(sParty[sRenameMon]);
     return;
   }
   if (sSelectedMon >= 0) {
@@ -2415,6 +2603,108 @@ void TargetButton(int button, ImVec2 size) {
   }
 }
 
+const char *BlockedWord(int blocked) {
+  switch (blocked) {
+  case GEAR_PARTY_FAINTED:
+    return "Fainted";
+  case GEAR_PARTY_IN_BATTLE:
+    return "In battle";
+  case GEAR_PARTY_EGG:
+    return "Egg";
+  case GEAR_PARTY_CHOSEN:
+    return "Chosen";
+  case GEAR_PARTY_PARTNERS:
+    return "Partner's";
+  case GEAR_PARTY_LEARNING:
+    return "Learning";
+  default:
+    return nullptr;
+  }
+}
+
+// Switching Pokemon: the party list, as on the DS screen (two across, in the battle's order)
+void DrawBattleParty(const GearBattleMenu &m) {
+  const float width = ImGui::GetContentRegionAvail().x;
+  const float gap = S(6.0f);
+  ImGui::TextColored(ImColor(kTextDim), "%s", m.cancel ? "Switch to which Pokemon?" : "Choose the next Pokemon to send out.");
+  const float cardWidth = (width - gap) * 0.5f;
+  for (int i = 0; i < m.partyCount; i++) {
+    if (i % 2 != 0) {
+      ImGui::SameLine(0.0f, gap);
+    }
+    const GearMon &mon = m.party[i];
+    if (mon.species == 0) {
+      ImGui::Dummy(ImVec2(cardWidth, S(82.0f)));
+      continue;
+    }
+    const int blocked = m.partyBlocked[i];
+    // A Pokemon that can't come in can still be picked for its summary, as on the DS
+    if (MonCard(100 + i, mon, ImVec2(cardWidth, S(82.0f)), BlockedWord(blocked), blocked != GEAR_PARTY_OK) && m.ready) {
+      Gear_PressBattleButton(i);
+    }
+  }
+  if (m.cancel) {
+    MenuButton(6, "Cancel", nullptr, IM_COL32(110, 118, 134, 255), ImVec2(width, S(48.0f)));
+  }
+}
+
+// The Pokemon picked from the list: switch it in, or look at it on the DS screen
+void DrawBattlePartyMon(const GearBattleMenu &m, const int *opponents, int opponentCount) {
+  const float width = ImGui::GetContentRegionAvail().x;
+  const float gap = S(6.0f);
+  const GearMon &mon = m.party[m.partySelected];
+  const int blocked = m.partyBlocked[m.partySelected];
+  MonCard(100 + m.partySelected, mon, ImVec2(width, S(82.0f)), BlockedWord(blocked));
+  if (!mon.isEgg) {
+    // Its moves against what's out there now
+    const float moveWidth = (width - gap) * 0.5f;
+    int shown = 0;
+    for (int i = 0; i < 4; i++) {
+      if (mon.moves[i].id == 0) {
+        continue;
+      }
+      if (shown % 2 != 0) {
+        ImGui::SameLine(0.0f, gap);
+      }
+      ImGui::PushID(200 + i);
+      DrawBattleMove(-1, i, mon.moves[i], opponents, opponentCount, ImVec2(moveWidth, S(44.0f)));
+      ImGui::PopID();
+      shown++;
+    }
+  }
+
+  const char *why = nullptr;
+  switch (blocked) {
+  case GEAR_PARTY_FAINTED:
+    why = "It has no energy left to battle";
+    break;
+  case GEAR_PARTY_IN_BATTLE:
+    why = "It's already in battle";
+    break;
+  case GEAR_PARTY_EGG:
+    why = "An egg can't battle";
+    break;
+  case GEAR_PARTY_CHOSEN:
+    why = "Your other Pokemon is switching to it";
+    break;
+  case GEAR_PARTY_PARTNERS:
+    why = "It's your partner's Pokemon";
+    break;
+  case GEAR_PARTY_LEARNING:
+    why = "Not while a move is being learned";
+    break;
+  default:
+    break;
+  }
+  MenuButton(0, "Switch in", why, kPokemonColor, ImVec2(width, S(66.0f)), blocked == GEAR_PARTY_OK && m.ready);
+  const float third = (width - gap * 2) / 3.0f;
+  MenuButton(1, "Summary", "DS screen", kRunColor, ImVec2(third, S(52.0f)), !mon.isEgg && m.ready);
+  ImGui::SameLine(0.0f, gap);
+  MenuButton(2, "Moves", "DS screen", kRunColor, ImVec2(third, S(52.0f)), !mon.isEgg && m.ready);
+  ImGui::SameLine(0.0f, gap);
+  MenuButton(3, "Back", nullptr, IM_COL32(110, 118, 134, 255), ImVec2(third, S(52.0f)), m.ready);
+}
+
 // The battle menu the game is showing, as Gear buttons. Returns FALSE when there's none.
 bool DrawBattleControls(const int *opponents, int opponentCount) {
   const GearBattleMenu &m = sMenu;
@@ -2479,6 +2769,12 @@ bool DrawBattleControls(const int *opponents, int opponentCount) {
     break;
   case GEAR_MENU_STOP:
     MenuButton(0, "Stop watching", nullptr, kRunColor, ImVec2(width, S(56.0f)));
+    break;
+  case GEAR_MENU_PARTY:
+    DrawBattleParty(m);
+    break;
+  case GEAR_MENU_PARTY_MON:
+    DrawBattlePartyMon(m, opponents, opponentCount);
     break;
   default:
     return false;
